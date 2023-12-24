@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Apache ECharts Example</title>
+    <!-- Load ECharts library from CDN -->
+    <script src="echarts.min.js"></script>
+    <style>
+        /* Style for the chart container */
+        .chart-container {
+            width: 1000px; /* Increased width for the chart */
+            height: 400px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="csvFile" accept=".csv" onchange="handleFile(this.files)">
+    <div id="charts"></div>
+
+    <script>
+        function handleFile(files) {
+            var file = files[0];
+            var reader = new FileReader();
+
+            reader.onload = function(event) {
+                var csvData = event.target.result;
+                processData(csvData);
+            };
+
+            reader.readAsText(file);
+        }
+
+        function processData(csvData) {
+            var lines = csvData.split("\n");
+            var headers = lines[0].split(",");
+
+            var result = [];
+            for (var i = 1; i < lines.length; i++) {
+                var currentLine = lines[i].split(",");
+                if (currentLine.length === headers.length) {
+                    var obj = {};
+                    for (var j = 0; j < headers.length; j++) {
+                        obj[headers[j].trim()] = currentLine[j].trim();
+                    }
+                    result.push(obj);
+                }
+            }
+
+            var dataByProduct = {};
+            result.forEach(function (item) {
+                if (!dataByProduct[item.PriceType]) {
+                    dataByProduct[item.PriceType] = [];
+                }
+                dataByProduct[item.PriceType].push({ 'ProductId': item.ProductId, 'Price': parseFloat(item.Price), 'Code': item.Code });
+            });
+
+            displayCharts(dataByProduct);
+        }
+
+        function displayCharts(dataByProduct) {
+            var chartsContainer = document.getElementById('charts');
+            chartsContainer.innerHTML = '';
+
+            Object.keys(dataByProduct).forEach(function (priceType) {
+                var chartContainer = document.createElement('div');
+                chartContainer.className = 'chart-container';
+                chartContainer.id = 'chart-' + priceType;
+                chartsContainer.appendChild(chartContainer);
+
+                var chart = echarts.init(chartContainer);
+                var chartData = dataByProduct[priceType];
+
+                var seriesData = {};
+                chartData.forEach(function (item) {
+                    if (!seriesData[item.ProductId]) {
+                        seriesData[item.ProductId] = [];
+                    }
+                    seriesData[item.ProductId].push(item.Price);
+                });
+
+                var option = {
+                    title: {
+                        text: 'Price Type: ' + priceType
+                    },
+                    grid: {
+                        right: '30%', // Adjust the right padding to accommodate the labels
+                        containLabel: true
+                    },
+                    xAxis: {
+                        type: 'category',
+                        data: chartData.map(function (item) { return item.Code; })
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: Object.keys(seriesData).map(function (productId) {
+                        return {
+                            name: productId,
+                            type: 'line',
+                            data: seriesData[productId]
+                        };
+                    }),
+                    tooltip: {
+                        trigger: 'axis'
+                    }
+                };
+
+                chart.setOption(option);
+            });
+        }
+    </script>
+</body>
+</html>
